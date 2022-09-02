@@ -24,4 +24,5 @@
 	(3) 如果在db saver存储异常，且业务db异常时，服务回到原始情况，并不会造成情况恶化。
 
 # 类图
+<img width="1553" alt="image" src="https://user-images.githubusercontent.com/46000689/188212860-594846fb-08a3-4e34-9e08-1e2bf6f760f9.png">
 
