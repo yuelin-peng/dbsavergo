@@ -15,7 +15,7 @@ import (
 	"github.com/yuelin-peng/dbsavergo/domain/saver/do"
 )
 
-var _ = Describe("Save", func() {
+var _ = Describe("Save-save", func() {
 	var (
 		t          = GinkgoT()
 		ctx        = context.Background()
@@ -37,7 +37,7 @@ var _ = Describe("Save", func() {
 			Do(func(ctx context.Context, newOrder *do.Order) {
 				savedOrder = newOrder
 			})
-		err := createSaver(t, order, dao).Save(ctx)
+		err := createSaver(t, dao).Save(ctx, order)
 		It("无错误｜保存信息与入参一致", func() {
 			assert.Nil(t, err)
 			assert.Equal(t, true, order.IsEqualForReqInfo(savedOrder))
@@ -56,7 +56,7 @@ var _ = Describe("Save", func() {
 			Do(func(ctx context.Context, newOrder *do.Order, oldOrder *do.Order) {
 				savedOrder = newOrder
 			})
-		err := createSaver(t, order, d).Save(ctx)
+		err := createSaver(t, d).Save(ctx, order)
 		It("无错误｜保存信息与入参一致|保存信息版本号不小于原版本号", func() {
 			assert.Nil(t, err)
 			assert.Equal(t, true, order.IsEqualForReqInfo(savedOrder))
@@ -74,7 +74,7 @@ var _ = Describe("Save", func() {
 		d := dao.NewMockOrderDAO(mockCtrl)
 		d.EXPECT().SetNX(gomock.Any(), gomock.Any()).Return(0, dao.DuplicateEntry)
 		d.EXPECT().QueryByOrderNO(gomock.Any(), gomock.Any()).Return(&oldOrder, nil)
-		err := createSaver(t, order, d).Save(ctx)
+		err := createSaver(t, d).Save(ctx, order)
 		It("无错误｜不保存", func() {
 			assert.Nil(t, err)
 		})
@@ -87,7 +87,7 @@ var _ = Describe("Save", func() {
 		mockCtrl := gomock.NewController(t)
 		defer mockCtrl.Finish()
 		d := dao.NewMockOrderDAO(mockCtrl)
-		err := createSaver(t, &invalidOrder, d).Save(ctx)
+		err := createSaver(t, d).Save(ctx, &invalidOrder)
 		It("参数异常｜订单未保存", func() {
 			assert.Equal(t, err, saver.InvalidParam)
 		})
@@ -99,15 +99,78 @@ var _ = Describe("Save", func() {
 		defer mockCtrl.Finish()
 		d := dao.NewMockOrderDAO(mockCtrl)
 		d.EXPECT().SetNX(gomock.Any(), gomock.Any()).Return(0, fmt.Errorf("db failed"))
-		err := createSaver(t, order, d).Save(ctx)
+		err := createSaver(t, d).Save(ctx, order)
 		It("存储异常｜订单未保存", func() {
 			assert.Equal(t, saver.StorageAbnormal, err)
 		})
 	})
 })
 
-func createSaver(t ginkgo.GinkgoTInterface, order *do.Order, dao dao.OrderDAO) *saver.Saver {
-	s, err := saver.NewSaver(context.Background(), order, dao)
+var _ = Describe("Save-Query", func() {
+	var (
+		t       = GinkgoT()
+		ctx     = context.Background()
+		orderNO = "abc"
+		order   = &do.Order{
+			OrderNO:    "abc",
+			ModifyTime: time.Now().Unix(),
+			Version:    1,
+		}
+	)
+	Describe("入参异常", func() {
+		defer GinkgoRecover()
+
+		mockCtrl := gomock.NewController(t)
+		defer mockCtrl.Finish()
+		d := dao.NewMockOrderDAO(mockCtrl)
+		n, err := createSaver(t, d).Query(ctx, "")
+		It("订单为空｜有错误", func() {
+			assert.Nil(t, n)
+			assert.NotNil(t, err)
+		})
+	})
+	Describe("入参正常", func() {
+		defer GinkgoRecover()
+
+		Context("存储异常", func() {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+			d := dao.NewMockOrderDAO(mockCtrl)
+			d.EXPECT().QueryByOrderNO(gomock.Any(), orderNO).Return(nil, fmt.Errorf("something wrong"))
+			n, err := createSaver(t, d).Query(ctx, orderNO)
+			It("订单为空｜有错误", func() {
+				assert.NotNil(t, err)
+				assert.Nil(t, n)
+			})
+		})
+		Context("存储正常，无订单", func() {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+			d := dao.NewMockOrderDAO(mockCtrl)
+			d.EXPECT().QueryByOrderNO(gomock.Any(), orderNO).Return(nil, nil)
+			n, err := createSaver(t, d).Query(ctx, orderNO)
+			It("订单为空｜无错误", func() {
+				assert.Nil(t, err)
+				assert.Nil(t, n)
+			})
+		})
+		Context("存储正常，有订单", func() {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+			d := dao.NewMockOrderDAO(mockCtrl)
+			d.EXPECT().QueryByOrderNO(gomock.Any(), orderNO).Return(order, nil)
+			n, err := createSaver(t, d).Query(ctx, orderNO)
+			It("订单不为空，订单号与预期一致｜无错误", func() {
+				assert.Nil(t, err)
+				assert.NotNil(t, n)
+				assert.Equal(t, orderNO, n.OrderNO)
+			})
+		})
+	})
+})
+
+func createSaver(t ginkgo.GinkgoTInterface, dao dao.OrderDAO) *saver.Saver {
+	s, err := saver.NewSaver(context.Background(), dao)
 	assert.Nil(t, err)
 	assert.NotNil(t, s)
 	return s

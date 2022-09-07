@@ -27,7 +27,10 @@ func NewSaver(ctx context.Context, dao dao.OrderDAO) (*Saver, error) {
 }
 
 func (s *Saver) Query(ctx context.Context, orderNO string) (*do.Order, error) {
-	return nil, nil
+	if len(orderNO) == 0 {
+		return nil, InvalidParam
+	}
+	return s.orderDAO.QueryByOrderNO(ctx, orderNO)
 }
 
 func (s *Saver) Save(ctx context.Context, order *do.Order) error {
