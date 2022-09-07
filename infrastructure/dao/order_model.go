@@ -37,7 +37,18 @@ func (m *OrderModel) TableName() string {
 }
 
 func (m *OrderModel) QueryByOrderNO(ctx context.Context, orderNO string) (*do.Order, error) {
-	return nil, nil
+	if len(orderNO) == 0 {
+		return nil, InvalidParam
+	}
+	var order do.Order
+	db := m.db.Table(m.TableName()).Where("order_no = ?", orderNO).First(&order)
+	if db.Error == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if db.Error != nil {
+		return nil, db.Error
+	}
+	return &order, nil
 }
 
 func (m *OrderModel) SetNX(ctx context.Context, o *do.Order) (int, error) {

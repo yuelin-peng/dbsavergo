@@ -2,6 +2,7 @@ package dao_test
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -165,6 +166,61 @@ var _ = Describe("OrderModel-SetWithCas", func() {
 			assert.Equal(t, dao.DBAbnormal, err)
 			assert.Equal(t, 0, affectedRows)
 		})
+	})
+})
+
+var _ = Describe("OrderModel-QueryByOrderNO", func() {
+	var (
+		ctx     = context.Background()
+		t       = GinkgoT()
+		orderNO = "abc"
+	)
+	Describe("入参异常", func() {
+		gormDB, _ := createMockGormDB(t)
+		d := createMockOrderModel(t, gormDB)
+		n, err := d.QueryByOrderNO(ctx, "")
+
+		It("订单未空｜有错误", func() {
+			assert.NotNil(t, err)
+			assert.Nil(t, n)
+		})
+	})
+
+	Describe("入参正常", func() {
+		Context("db异常", func() {
+			gormDB, mock := createMockGormDB(t)
+			d := createMockOrderModel(t, gormDB)
+			mock.ExpectQuery("SELECT `" + "`.+" + d.TableName() + "`.+").WillReturnError(fmt.Errorf("something is wrong"))
+			n, err := d.QueryByOrderNO(ctx, orderNO)
+
+			It("订单为空|有错误", func() {
+				assert.NotNil(t, err)
+				assert.Nil(t, n)
+			})
+		})
+		Context("没有订单", func() {
+			gormDB, mock := createMockGormDB(t)
+			d := createMockOrderModel(t, gormDB)
+			mock.ExpectQuery("SELECT " + ".+`" + d.TableName() + "`.+").WillReturnError(gorm.ErrRecordNotFound)
+			n, err := d.QueryByOrderNO(ctx, orderNO)
+			It("订单为空｜无错误", func() {
+				assert.Nil(t, err)
+				assert.Nil(t, n)
+			})
+		})
+		Context("有订单", func() {
+			gormDB, mock := createMockGormDB(t)
+			d := createMockOrderModel(t, gormDB)
+			mock.ExpectQuery("SELECT " + ".+`" + d.TableName() + "`.+").WillReturnRows(sqlmock.NewRows([]string{"id", "order_no", "version", "create_time", "end_time"}).
+				AddRow(1, orderNO, 1, time.Now(), time.Now()))
+			n, err := d.QueryByOrderNO(ctx, orderNO)
+			It("订单不为空|订单号相等｜无错误", func() {
+				assert.Nil(t, err)
+				assert.NotNil(t, n)
+				assert.Equal(t, orderNO, n.OrderNO)
+			})
+		})
+
 	})
 })
 
