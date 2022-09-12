@@ -61,6 +61,10 @@ func (s *Saver) Save(ctx context.Context, order *do.Order) error {
 	return nil
 }
 
+func (s *Saver) Eliminate(ctx context.Context, order *do.Order) error {
+	return nil
+}
+
 func (s *Saver) checkOrder(order *do.Order) error {
 	if order == nil {
 		return fmt.Errorf("[checkOrder] order can't be nil")

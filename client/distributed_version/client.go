@@ -41,23 +41,6 @@ func (c *client) SaveOrder(ctx context.Context, order *Order) error {
 	return nil
 }
 
-func (c *client) checkOrder(order *Order) error {
-	if order == nil {
-		return fmt.Errorf("order can't be nil")
-	}
-	if len(order.OrderNO) == 0 {
-		return fmt.Errorf("order number can't be empty")
-	}
-	if order.Version < 0 {
-		return fmt.Errorf("order version can't be less than 0")
-	}
-	if order.ModifyTime <= 0 {
-		return fmt.Errorf("order modify time can't be less than 0")
-	}
-
-	return nil
-}
-
 func (c *client) IsNormalWithCreateTime(ctx context.Context, orderNO string, createTime int64) (bool, error) {
 	abnormalTimeList, err := c.dbMonitor.GetDBAbnormalDuration(ctx)
 	if err == nil { // 如果db监控器正常，且订单发生在异常之后，直接返回正常
@@ -73,6 +56,23 @@ func (c *client) IsNormalWithCreateTime(ctx context.Context, orderNO string, cre
 		return true, nil
 	}
 	return false, nil
+}
+
+func (c *client) checkOrder(order *Order) error {
+	if order == nil {
+		return fmt.Errorf("order can't be nil")
+	}
+	if len(order.OrderNO) == 0 {
+		return fmt.Errorf("order number can't be empty")
+	}
+	if order.Version < 0 {
+		return fmt.Errorf("order version can't be less than 0")
+	}
+	if order.ModifyTime <= 0 {
+		return fmt.Errorf("order modify time can't be less than 0")
+	}
+
+	return nil
 }
 
 func (c *client) orderCreatedBeforeDBAbnormal(abnormalTimeList []TimeInterval, createTime int64) bool {

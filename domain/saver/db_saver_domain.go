@@ -10,5 +10,6 @@ import (
 
 type DBSaverDomain interface {
 	Save(ctx context.Context, order *do.Order) error
+	Eliminate(ctx context.Context, order *do.Order) (*do.Order, error)
 	Query(ctx context.Context, orderNO string) (*do.Order, error)
 }
