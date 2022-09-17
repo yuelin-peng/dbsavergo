@@ -14,7 +14,7 @@ var (
 	tableConfig   = TableConfig{
 		TableName:       "test.canal_test",
 		OrderNOField:    "order_no",
-		ModifyTimeField: "modify_time",
+		ModifyTimeField: "modify_time.Unix",
 		VersionField:    "modify_time.Unix",
 	}
 )
@@ -23,13 +23,14 @@ func init() {
 	cfg = canal.NewDefaultConfig()
 	cfg.Addr = "127.0.0.1:3306"
 	cfg.User = "root"
-	cfg.Password = "peng823971@"
+	cfg.Password = "XXXX-password"
 	cfg.Dump.TableDB = "test"
 	cfg.Dump.Tables = []string{"canal_test"}
 	cfg.IncludeTableRegex = make([]string, 1)
 	cfg.IncludeTableRegex[0] = ".*\\.canal_test"
 
-	dbSaverConfig.URL = "root:peng823971@@tcp(127.0.0.1:3306)/db_saver?charset=utf8mb4&parseTime=True&loc=Local"
+	dbSaverConfig.URL = fmt.Sprintf("%s:%s@tcp(%s)/db_saver?charset=utf8mb4&parseTime=True&loc=Local",
+		cfg.User, cfg.Password, cfg.Addr)
 }
 
 func main() {

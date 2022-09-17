@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/siddontang/go/log"
 	"github.com/yuelin-peng/dbsavergo/domain/saver"
 	"github.com/yuelin-peng/dbsavergo/domain/saver/do"
 	"github.com/yuelin-peng/dbsavergo/infrastructure/dao"
 	"github.com/yuelin-peng/dbsavergo/util"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type DBConfig struct {
@@ -31,7 +33,9 @@ type TableConsumer struct {
 }
 
 func NewConsumerWithConfig(ctx context.Context, config DBConfig, tableConfig TableConfig) (*TableConsumer, error) {
-	db, err := gorm.Open(mysql.Open(config.URL), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(config.URL), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +90,8 @@ func (c *TableConsumer) convertToOrder(value map[string]interface{}) (*do.Order,
 	if len(value) == 0 {
 		return nil, fmt.Errorf("value can't be nil")
 	}
+	log.Infof("convertToOrder:value=%v", value)
+
 	order := &do.Order{}
 	if orderNO, err := c.orderNOFieldParser.GetFieldValue(value); err == nil {
 		order.OrderNO = orderNO.(string)

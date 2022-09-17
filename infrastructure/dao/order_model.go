@@ -20,6 +20,7 @@ type TOrder struct {
 	Version    int64  `gorm:"column:version"`
 	CreateTime int64  `gorm:"column:create_time"`
 	ModifyTime int64  `gorm:"column:modify_time"`
+	Status     int    `gorm:"column:status"`
 }
 
 func NewOrderModel(ctx context.Context, db *gorm.DB) (*OrderModel, error) {
@@ -82,12 +83,17 @@ func (m *OrderModel) SetWithCas(ctx context.Context, n *do.Order, o *do.Order) (
 }
 
 func (m *OrderModel) toOrderModel(o *do.Order) *TOrder {
-	return &TOrder{
+	t := &TOrder{
 		OrderNO:    o.OrderNO,
 		Version:    o.Version,
 		CreateTime: time.Now().Unix(),
 		ModifyTime: time.Now().Unix(),
+		Status:     o.Status,
 	}
+	if t.Status <= 0 {
+		t.Status = do.Normal
+	}
+	return t
 }
 func (m *OrderModel) checkOrderForSetNX(o *do.Order) error {
 	if o == nil {

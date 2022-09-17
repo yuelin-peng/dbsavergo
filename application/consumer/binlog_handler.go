@@ -43,7 +43,8 @@ func NewBinLogHandler(ctx context.Context, s saver.DBSaver, tableConfig TableCon
 }
 
 func (h *BinLogHandler) OnRow(e *canal.RowsEvent) error {
-	log.Infof("get row action=%v, rows=%v, table=%v", e.Action, e.Rows, e.Table)
+	log.Infof("get row action=%v, rows=%v, table=%v, columns=%v",
+		e.Action, e.Rows, e.Table, e.Table.Columns)
 
 	value, err := h.rowsToMap(e)
 	if err != nil {

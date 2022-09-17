@@ -106,6 +106,142 @@ var _ = Describe("Save-save", func() {
 	})
 })
 
+var _ = Describe("Saver-Eliminate", func() {
+	defer GinkgoRecover()
+	var (
+		t     = GinkgoT()
+		ctx   = context.Background()
+		order = &do.Order{
+			OrderNO:    "abc",
+			ModifyTime: time.Now().Unix(),
+			Version:    1,
+			Status:     do.Deleted,
+		}
+		oldOrder = &do.Order{
+			OrderNO:    "abc",
+			ModifyTime: time.Now().Unix(),
+			Version:    0,
+			Status:     do.Normal,
+		}
+	)
+
+	Describe("版本号大于当前值", func() {
+		Context("存储正常", func() {
+			It("无错误", func() {
+				mockCtrl := gomock.NewController(t)
+				defer mockCtrl.Finish()
+				dao := dao.NewMockOrderDAO(mockCtrl)
+				dao.EXPECT().QueryByOrderNO(gomock.Any(), order.OrderNO).Return(oldOrder, nil)
+				dao.EXPECT().SetWithCas(gomock.Any(), order, oldOrder).Return(1, nil)
+				err := createSaver(t, dao).Eliminate(ctx, order)
+				assert.Nil(t, err)
+			})
+		})
+		Context("存储异常", func() {
+			It("有错误", func() {
+				mockCtrl := gomock.NewController(t)
+				defer mockCtrl.Finish()
+				dao := dao.NewMockOrderDAO(mockCtrl)
+				dao.EXPECT().QueryByOrderNO(gomock.Any(), order.OrderNO).Return(nil, fmt.Errorf("something wrong"))
+				err := createSaver(t, dao).Eliminate(ctx, order)
+				assert.NotNil(t, err)
+			})
+		})
+	})
+	Describe("版本号等于当前值", func() {
+		Context("订单未消除", func() {
+			It("无错误", func() {
+				mockCtrl := gomock.NewController(t)
+				defer mockCtrl.Finish()
+				oldOrder := *order
+				oldOrder.Status = do.Normal
+				dao := dao.NewMockOrderDAO(mockCtrl)
+				dao.EXPECT().QueryByOrderNO(gomock.Any(), order.OrderNO).Return(&oldOrder, nil)
+				dao.EXPECT().SetWithCas(gomock.Any(), order, &oldOrder).Return(1, nil)
+				err := createSaver(t, dao).Eliminate(ctx, order)
+				assert.Nil(t, err)
+			})
+		})
+		Context("订单已消除", func() {
+			It("无错误", func() {
+				mockCtrl := gomock.NewController(t)
+				defer mockCtrl.Finish()
+				oldOrder := *order
+				oldOrder.Status = do.Deleted
+				dao := dao.NewMockOrderDAO(mockCtrl)
+				dao.EXPECT().QueryByOrderNO(gomock.Any(), order.OrderNO).Return(&oldOrder, nil)
+				err := createSaver(t, dao).Eliminate(ctx, order)
+				assert.Nil(t, err)
+			})
+		})
+	})
+	Describe("版本号小于当前值", func() {
+		Context("订单未消除", func() {
+			It("无错误", func() {
+				mockCtrl := gomock.NewController(t)
+				defer mockCtrl.Finish()
+				oldOrder := *order
+				oldOrder.Version++
+				oldOrder.Status = do.Normal
+				dao := dao.NewMockOrderDAO(mockCtrl)
+				dao.EXPECT().QueryByOrderNO(gomock.Any(), order.OrderNO).Return(&oldOrder, nil)
+				err := createSaver(t, dao).Eliminate(ctx, order)
+				assert.Nil(t, err)
+			})
+		})
+		Context("订单已消除", func() {
+			It("无错误", func() {
+				mockCtrl := gomock.NewController(t)
+				defer mockCtrl.Finish()
+				oldOrder := *order
+				oldOrder.Version++
+				oldOrder.Status = do.Deleted
+				dao := dao.NewMockOrderDAO(mockCtrl)
+				dao.EXPECT().QueryByOrderNO(gomock.Any(), order.OrderNO).Return(&oldOrder, nil)
+				err := createSaver(t, dao).Eliminate(ctx, order)
+				assert.Nil(t, err)
+			})
+		})
+	})
+	Describe("订单不存在", func() {
+		It("无错误", func() {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+			dao := dao.NewMockOrderDAO(mockCtrl)
+			tmp := *order
+			tmp.Status = do.Deleted
+			dao.EXPECT().QueryByOrderNO(gomock.Any(), order.OrderNO).Return(nil, nil)
+			dao.EXPECT().SetNX(gomock.Any(), &tmp).Return(1, nil)
+			err := createSaver(t, dao).Eliminate(ctx, order)
+			assert.Nil(t, err)
+		})
+	})
+	Describe("订单异常", func() {
+		Context("订单为nil", func() {
+			It("有错误", func() {
+				mockCtrl := gomock.NewController(t)
+				defer mockCtrl.Finish()
+				dao := dao.NewMockOrderDAO(mockCtrl)
+				err := createSaver(t, dao).Eliminate(ctx, nil)
+				assert.NotNil(t, err)
+			})
+		})
+		Context("订单号为空", func() {
+			It("有错误", func() {
+				mockCtrl := gomock.NewController(t)
+				defer mockCtrl.Finish()
+				dao := dao.NewMockOrderDAO(mockCtrl)
+				tmp := *order
+				tmp.OrderNO = ""
+				tmp.Version = -1
+				tmp.ModifyTime = 0
+				err := createSaver(t, dao).Eliminate(ctx, &tmp)
+				assert.NotNil(t, err)
+			})
+		})
+	})
+})
+
 var _ = Describe("Save-Query", func() {
 	var (
 		t       = GinkgoT()

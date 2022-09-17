@@ -62,7 +62,51 @@ func (s *Saver) Save(ctx context.Context, order *do.Order) error {
 }
 
 func (s *Saver) Eliminate(ctx context.Context, order *do.Order) error {
+	if err := s.checkOrder(order); err != nil {
+		return err
+	}
+	oldOrder, err := s.orderDAO.QueryByOrderNO(ctx, order.OrderNO)
+	if err != nil {
+		return err
+	}
+	// 如果没有订单，则新增被消除订单
+	if oldOrder == nil {
+		return s.addEliminateOrder(ctx, order)
+	}
+	if !s.needEliminate(oldOrder, order) {
+		return nil
+	}
+	order.Status = do.Deleted
+	_, err = s.orderDAO.SetWithCas(ctx, order, oldOrder)
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+func (s *Saver) addEliminateOrder(ctx context.Context, order *do.Order) error {
+	order.Status = do.Deleted
+	affectedRows, err := s.orderDAO.SetNX(ctx, order)
+	if err != nil {
+		return err
+	} else if affectedRows != 1 {
+		return fmt.Errorf("setnx order failed, affectedRows=%v", affectedRows)
+	}
+	return nil
+}
+
+func (s *Saver) needEliminate(oldOrder *do.Order, order *do.Order) bool {
+	if oldOrder == nil {
+		return true
+	}
+	if order == nil {
+		return false
+	}
+	// 无需处理
+	if oldOrder.Version > order.Version || oldOrder.Status == do.Deleted {
+		return false
+	}
+	return true
 }
 
 func (s *Saver) checkOrder(order *do.Order) error {
