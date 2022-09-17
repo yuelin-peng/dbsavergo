@@ -6,8 +6,7 @@
 	当主db发生异常时，业务将访问db saver判断该订单是否已同步。如果未同步，业务可以拒绝为订单的服务。
 	使用db saver，业务可以将db异常时，对业务的影响面控制在同步延迟范围内的订单上，不会大面积影响用户。当原主db恢复时，可以
 	恢复之前未同步的数据。
-<img width="1921" alt="image" src="https://user-images.githubusercontent.com/46000689/188212990-16509351-9142-4a9d-95bc-65f9190cc263.png">
-
+![image](https://user-images.githubusercontent.com/46000689/190843283-d6eb392c-9e91-4921-a5de-e8cd1c9fa395.png)
 
 # 如何保证db saver的可用性：
 1、通过降级db saver server的存储来实现，比如：当db saver的第一级存储失败，可以降级到二级存储，然后db saver server再旁路从二级存储中获取数据写入一级存储
@@ -26,5 +25,5 @@
 	(3) 如果在db saver存储异常，且业务db异常时，服务回到原始情况，并不会造成情况恶化。
 
 # 类图
-<img width="1553" alt="image" src="https://user-images.githubusercontent.com/46000689/188212860-594846fb-08a3-4e34-9e08-1e2bf6f760f9.png">
+![image](https://user-images.githubusercontent.com/46000689/190843276-8a9dc357-6648-49b7-947d-c47674722faa.png)
 
